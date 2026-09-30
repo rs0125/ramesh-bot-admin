@@ -1,0 +1,8 @@
+# CI uploads only the standalone app source. All credentials remain Vercel environment variables.
+.env*
+e2e/
+tests/
+test-results/
+playwright-report/
+.github/
+docs/

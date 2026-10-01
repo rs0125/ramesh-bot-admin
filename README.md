@@ -1,12 +1,14 @@
 # WareOnGo bot admin
 
-Standalone Next.js + TypeScript admin for the sales WhatsApp worker. It provides sign-in, QR display, connection status, activity and connect/disconnect/reconnect controls. Deploy this project to Vercel; run the persistent [ramesh-bot worker](https://github.com/rs0125/ramesh-bot) separately on EC2.
+Standalone Next.js + TypeScript admin for the sales WhatsApp worker. It provides sign-in, pairing, connection controls, and an inbox for DMs, all group messages, tagged-message filtering, and sending text as Ramesh to existing conversations. Deploy this project to Vercel; run the persistent [ramesh-bot worker](https://github.com/rs0125/ramesh-bot) separately on EC2.
 
 This project has its own package, lockfile and CI/CD. It has no Prisma/Baileys dependency, shared npm package, or runtime dependency on a neighboring checkout. Its only connection to the worker is the versioned HTTP API configured by `WORKER_API_URL`.
 
 Reviewed **1 October 2026**, alongside worker release `5eb14d0`. The worker now runs an OpenAI Terra `converser → formatter` LangGraph flow and separate Supabase `ramesh-inbound-queue` / `ramesh-outbound-queue` tables. Its Context Engine MCP services are scaffolded but inactive; employee enrollment, planner/worker/verifier agents, business reads, reminders, and writes are deferred. These worker additions preserve the existing admin API.
 
-This admin remains the pairing and operations console. It does not yet browse queue rows, edit employee grants, display agent traces, or provide a chat playground. Model keys, MCP credentials, and Supabase connections stay outside this application.
+The inbox requires the worker's `202610010003_inbox.sql` Supabase migration and compatible worker endpoints before rollout. It reads encrypted history through the worker; model keys, MCP credentials, and Supabase connections stay outside this application. History is retained for 30 days and also supplies the worker's recent conversation context. Text cleared by older releases is unavailable. Employee grants, agent traces, and the separate chat playground remain outside this console.
+
+Select a conversation to send up to 4,000 characters as Ramesh. WhatsApp must be connected. The inbox displays queued, sending, sent, failed, expired, and uncertain outcomes; sent means SDK acceptance. Uncertain HTTP results retain the same request ID for retry protection. Automatic replies remain active. Group auto-replies require mentions by default, controlled by the worker's `GROUP_REPLIES_REQUIRE_MENTION` code constant; reading all group messages is always enabled.
 
 ## Local setup
 

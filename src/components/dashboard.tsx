@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { BotAction, BotStatus } from '../lib/worker-api';
 import { PairingCode } from './pairing-code';
+import { Inbox } from './inbox';
 
 const labels: Record<BotStatus['state'], string> = {
   stopped: 'Disconnected',
@@ -137,8 +138,8 @@ export function Dashboard() {
         </div>
         <div className="sidebar-note">
           <span className="small-label">CURRENT CAPABILITY</span>
-          <strong>A simple hello.</strong>
-          <p>Direct messages and group mentions, with one reply per message.</p>
+          <strong>Ramesh’s conversations.</strong>
+          <p>Read messages, follow group discussions, and send a reply as Ramesh.</p>
         </div>
         <div className="sidebar-bottom">
           <span className={`status-dot ${connected ? 'online' : ''}`} />
@@ -175,7 +176,7 @@ export function Dashboard() {
           <section className="metrics" aria-label="Activity since worker start">
             {[
               ['Messages received', metrics?.received, 'Text messages seen this session'],
-              ['Hello replies', metrics?.replied, 'Successfully submitted'],
+              ['Messages sent', metrics?.replied, 'Successfully submitted'],
               ['Duplicates skipped', metrics?.duplicates, 'Kept out of the conversation'],
             ].map(([title, value, detail]) => (
               <div className="metric" key={String(title)}>
@@ -185,6 +186,7 @@ export function Dashboard() {
               </div>
             ))}
           </section>
+          <Inbox connected={connected && !logoutBusy} />
           <div className="content-grid">
             <section className="panel connection-panel">
               <div className="panel-heading">
@@ -212,7 +214,7 @@ export function Dashboard() {
                 </h3>
                 <p>
                   {connected
-                    ? 'Send a message or mention the bot in a group. It will reply hello.'
+                    ? 'Messages appear in the inbox. You can also send a reply as Ramesh.'
                     : status?.state === 'pairing' && fresh
                       ? 'Open WhatsApp → Settings → Linked devices → Link a device.'
                       : 'Connect WhatsApp to start receiving DMs and group mentions.'}

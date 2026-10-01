@@ -38,6 +38,8 @@ test('admin, greeting policy, persisted state, outages, and session revocation w
   page.on('pageerror', (error) => errors.push(error.message));
 
   expect((await request.get('/api/bot/status')).status()).toBe(401);
+  expect((await request.get('/api/bot/inbox')).status()).toBe(401);
+  expect((await request.post('/api/bot/inbox', { data: {} })).status()).toBe(401);
   expect((await request.get('http://127.0.0.1:4311/v1/status')).status()).toBe(401);
   expect(
     (
@@ -88,6 +90,106 @@ test('admin, greeting policy, persisted state, outages, and session revocation w
   await simulate({ action: 'pair' });
   await expect(page.getByRole('heading', { name: 'You’re connected' })).toBeVisible();
   await expect(page.getByRole('img', { name: /Scan this QR/ })).toHaveCount(0);
+  if (!process.env.BOT_WORKER_DIR) {
+    await expect(page.getByRole('heading', { name: 'Ramesh’s inbox' })).toBeVisible();
+    await page.getByRole('button', { name: /Site visits/ }).click();
+    await expect(
+      page.getByText('The site visit is tomorrow at 10.', { exact: true }),
+    ).toBeVisible();
+    await expect(page.locator('.message-bubble').getByText('Alice', { exact: true })).toBeVisible();
+    await page.getByLabel('Tagged only').check();
+    await expect(
+      page
+        .locator('.message-bubble')
+        .getByText('The site visit is tomorrow at 10.', { exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      page
+        .locator('.message-bubble')
+        .getByText('@Ramesh can you confirm the visit?', { exact: true }),
+    ).toBeVisible();
+    await page.getByLabel('Tagged only').uncheck();
+    const sendBody = {
+      chatId: '123456@g.us',
+      text: 'Hello',
+      requestId: '44444444-4444-4444-8444-444444444444',
+    };
+    expect(
+      (
+        await page.request.post('/api/bot/inbox', {
+          data: sendBody,
+          headers: { Origin: 'https://attacker.invalid' },
+        })
+      ).status(),
+    ).toBe(403);
+    expect(
+      (
+        await page.request.post('/api/bot/inbox', {
+          data: { ...sendBody, text: ' ' },
+          headers: { Origin: origin },
+        })
+      ).status(),
+    ).toBe(400);
+    expect(
+      (
+        await page.request.post('/api/bot/inbox', {
+          data: { ...sendBody, chatId: 'unknown@lid' },
+          headers: { Origin: origin },
+        })
+      ).status(),
+    ).toBe(404);
+    await page.getByLabel('Message as Ramesh').fill('I will join the visit.');
+    await page.getByRole('button', { name: 'Send as Ramesh', exact: true }).click();
+    await expect(page.getByLabel('Message as Ramesh')).toHaveValue('');
+    await expect(
+      page.locator('.message-bubble.outbound').getByText('I will join the visit.', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.locator('.message-bubble.outbound').getByText('Sent to WhatsApp', { exact: true }),
+    ).toBeVisible();
+    // Lose an accepted POST response: polling reconciles the same stored request instead of resending.
+    let interrupted = false;
+    await page.route('**/api/bot/inbox', async (route) => {
+      if (route.request().method() !== 'POST' || interrupted) {
+        await route.continue();
+        return;
+      }
+      interrupted = true;
+      expect((await route.fetch()).status()).toBe(202);
+      await route.abort('failed');
+    });
+    await page.getByLabel('Message as Ramesh').fill('Accepted despite a lost response.');
+    await page.getByRole('button', { name: 'Send as Ramesh', exact: true }).click();
+    await expect(
+      page
+        .locator('.message-bubble.outbound')
+        .getByText('Accepted despite a lost response.', { exact: true }),
+    ).toHaveCount(1);
+    await expect(page.getByLabel('Message as Ramesh')).toHaveValue('');
+    await page.unroute('**/api/bot/inbox');
+    await page.reload();
+    await page.getByRole('button', { name: /Site visits/ }).click();
+    await expect(
+      page.locator('.message-bubble.outbound').getByText('I will join the visit.', { exact: true }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Direct', exact: true }).click();
+    await page.getByRole('button', { name: /Kavya/ }).click();
+    await expect(
+      page.locator('.message-list').getByText('Can we arrange a call?', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.locator('.message-list').getByText('I will join the visit.', { exact: true }),
+    ).toHaveCount(0);
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    await page.screenshot({ path: '/tmp/ramesh-inbox-mobile.png', fullPage: true });
+    await page.setViewportSize({ width: 1440, height: 1100 });
+    await page.getByRole('button', { name: 'Groups', exact: true }).click();
+    await page.getByRole('button', { name: /Site visits/ }).click();
+    await page.screenshot({ path: '/tmp/ramesh-inbox-desktop.png', fullPage: true });
+  }
   if (process.env.BOT_WORKER_DIR) {
     const dm = message('dm-1');
     const mentioned = message('mention-1', true, true);
@@ -125,6 +227,10 @@ test('admin, greeting policy, persisted state, outages, and session revocation w
 
   await page.getByRole('button', { name: 'Disconnect', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Connect WhatsApp' })).toBeEnabled();
+  if (!process.env.BOT_WORKER_DIR) {
+    await page.getByLabel('Message as Ramesh').fill('Draft while disconnected');
+    await expect(page.getByRole('button', { name: 'Send as Ramesh', exact: true })).toBeDisabled();
+  }
   await supervisor('restart-worker');
   expect((await status()).state).toBe('stopped');
   await supervisor('stop-worker');

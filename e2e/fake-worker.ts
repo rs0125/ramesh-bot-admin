@@ -2,7 +2,7 @@
 import { createServer } from 'node:http';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { BotStatus } from '../src/lib/worker-api';
+import type { BotStatus, InboxMessage } from '../src/lib/worker-api';
 
 const directory = process.env.E2E_STATE_DIR;
 if (!directory?.includes('wareongo-e2e-')) throw new Error('Missing isolated test state');
@@ -13,10 +13,54 @@ type State = {
   sessions: Record<string, number>;
   attempts: number;
   resets: number;
+  messages?: InboxMessage[];
 };
 const saved: State = await readFile(path, 'utf8')
   .then((data) => JSON.parse(data) as State)
   .catch(() => ({ enabled: false, paired: false, sessions: {}, attempts: 0, resets: 0 }));
+const group = '123456@g.us';
+const direct = '20000000000@s.whatsapp.net';
+saved.messages ??= [
+  {
+    id: '11111111-1111-4111-8111-111111111111',
+    chatId: group,
+    text: 'The site visit is tomorrow at 10.',
+    senderId: 'alice@lid',
+    senderName: 'Alice',
+    direction: 'inbound',
+    source: 'whatsapp',
+    mentionsBot: false,
+    at: new Date(Date.now() - 30000).toISOString(),
+    status: 'RECEIVED',
+    kind: 'text',
+  },
+  {
+    id: '22222222-2222-4222-8222-222222222222',
+    chatId: group,
+    text: '@Ramesh can you confirm the visit?',
+    senderId: 'bob@lid',
+    senderName: 'Bob',
+    direction: 'inbound',
+    source: 'whatsapp',
+    mentionsBot: true,
+    at: new Date(Date.now() - 20000).toISOString(),
+    status: 'RECEIVED',
+    kind: 'text',
+  },
+  {
+    id: '33333333-3333-4333-8333-333333333333',
+    chatId: direct,
+    text: 'Can we arrange a call?',
+    senderId: direct,
+    senderName: 'Kavya',
+    direction: 'inbound',
+    source: 'whatsapp',
+    mentionsBot: false,
+    at: new Date(Date.now() - 10000).toISOString(),
+    status: 'RECEIVED',
+    kind: 'text',
+  },
+];
 let writes = Promise.resolve();
 const persist = () => {
   const data = JSON.stringify(saved);
@@ -57,11 +101,64 @@ const servers = [4311, 4312].map((port) =>
         if (raw.length > 32_768) throw new Error('Large fixture request');
       }
       const body = raw ? (JSON.parse(raw) as Record<string, string | number>) : {};
+      const url = new URL(request.url ?? '/', 'http://fixture');
       if (port === 4312 && body.action === 'pair') {
         saved.paired = true;
         update();
         await persist();
         send({ ok: true });
+      } else if (url.pathname === '/v1/inbox/conversations') {
+        send({
+          conversations: [group, direct].map((chatId) => {
+            const latest = saved.messages!.filter((item) => item.chatId === chatId).at(-1)!;
+            return {
+              chatId,
+              name: chatId === group ? 'Site visits' : 'Kavya',
+              isGroup: chatId === group,
+              lastMessage: latest.text.slice(0, 200),
+              lastMessageAt: latest.at,
+            };
+          }),
+          nextCursor: null,
+          groupRepliesRequireMention: true,
+        });
+      } else if (url.pathname === '/v1/inbox/messages') {
+        send({
+          messages: saved.messages!.filter(
+            (item) => item.chatId === url.searchParams.get('chatId'),
+          ),
+          nextCursor: null,
+        });
+      } else if (url.pathname === '/v1/inbox/send') {
+        if (status.state !== 'connected') {
+          response.writeHead(409);
+          send({ error: 'Connect WhatsApp before sending' });
+          return;
+        }
+        if (![group, direct].includes(String(body.chatId))) {
+          response.writeHead(404);
+          send({ error: 'Conversation not found' });
+          return;
+        }
+        const id = `${body.requestId}:reply`;
+        const duplicate = saved.messages!.some((item) => item.id === id);
+        if (!duplicate)
+          saved.messages!.push({
+            id,
+            chatId: String(body.chatId),
+            text: String(body.text),
+            senderId: null,
+            senderName: 'Ramesh',
+            direction: 'outbound',
+            source: 'admin',
+            mentionsBot: false,
+            at: new Date().toISOString(),
+            status: 'SENT',
+            kind: 'text',
+          });
+        await persist();
+        response.writeHead(202);
+        send({ requestId: body.requestId, status: duplicate ? 'duplicate' : 'queued' });
       } else if (request.url === '/v1/status') send(status);
       else if (request.url === '/v1/control') {
         saved.enabled = body.action !== 'disconnect';

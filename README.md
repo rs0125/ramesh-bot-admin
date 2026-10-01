@@ -2,6 +2,8 @@
 
 Standalone Next.js + TypeScript admin for the sales WhatsApp worker. It provides sign-in, pairing, connection controls, and an inbox for DMs, all group messages, tagged-message filtering, and sending text as Ramesh to existing conversations. Deploy this project to Vercel; run the persistent [ramesh-bot worker](https://github.com/rs0125/ramesh-bot) separately on EC2.
 
+The workspace uses the supplied `rameshadmindesign.md` reference: parchment surfaces, wine primary actions, lilac selected states, and self-hosted variable Inter. The top navigation links to the overview, inbox, connection, and activity. On mobile, conversations open individually with a back control; drafts survive switching conversations within the current session. Send with the button or Ctrl/⌘ + Enter. Fonts and the generated sign-in photograph are served locally; see [asset provenance and the image prompt](docs/design-assets.json).
+
 This project has its own package, lockfile and CI/CD. It has no Prisma/Baileys dependency, shared npm package, or runtime dependency on a neighboring checkout. Its only connection to the worker is the versioned HTTP API configured by `WORKER_API_URL`.
 
 Reviewed **1 October 2026**, alongside the worker's trusted identity and signed Context Engine increment. The worker runs OpenAI Terra through `converser → formatter` in LangGraph and separate Supabase `ramesh-inbound-queue` / `ramesh-outbound-queue` tables. Trusted phone/LID resolution and signed employee-scoped requests are implemented outside the graph. No per-employee OAuth enrollment is needed for this path. Business tools, planner/worker/verifier, reminders and writes remain disconnected. The existing admin API is unchanged.

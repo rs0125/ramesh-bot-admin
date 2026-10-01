@@ -59,9 +59,20 @@ test('admin, greeting policy, persisted state, outages, and session revocation w
   ).toBe(413);
   await page.goto('/');
   await expect(page).toHaveURL(/\/login$/);
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.screenshot({ path: '/tmp/ramesh-login-desktop.png', fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: '/tmp/ramesh-login-mobile.png', fullPage: true });
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await page.getByLabel('Admin password').fill(password);
+  await page.getByRole('button', { name: 'Show password' }).click();
+  await expect(page.getByLabel('Admin password')).toHaveAttribute('type', 'text');
+  await page.getByRole('button', { name: 'Hide password' }).click();
+  await expect(page.getByLabel('Admin password')).toHaveAttribute('type', 'password');
   await page.getByRole('button', { name: 'Open workspace' }).click();
   await expect(page.getByRole('heading', { name: 'Bot overview' })).toBeVisible();
+  await page.screenshot({ path: '/tmp/ramesh-overview-desktop.png', fullPage: true });
   const cookie = (await context.cookies()).find((item) => item.name === 'wog_bot_admin')!;
   expect(cookie.httpOnly).toBe(true);
   expect(cookie.sameSite).toBe('Strict');
@@ -85,8 +96,15 @@ test('admin, greeting policy, persisted state, outages, and session revocation w
     ).status(),
   ).toBe(400);
 
+  await page.getByRole('link', { name: 'Connection', exact: true }).click();
+  await expect(page).toHaveURL(/#connection$/);
+  await expect(page.getByRole('link', { name: 'Connection', exact: true })).toHaveAttribute(
+    'aria-current',
+    'location',
+  );
   await page.getByRole('button', { name: 'Connect WhatsApp' }).click();
   await expect(page.getByRole('img', { name: /Scan this QR/ })).toBeVisible();
+  await page.locator('.connection-panel').screenshot({ path: '/tmp/ramesh-pairing.png' });
   await simulate({ action: 'pair' });
   await expect(page.getByRole('heading', { name: 'You’re connected' })).toBeVisible();
   await expect(page.getByRole('img', { name: /Scan this QR/ })).toHaveCount(0);
@@ -139,7 +157,7 @@ test('admin, greeting policy, persisted state, outages, and session revocation w
       ).status(),
     ).toBe(404);
     await page.getByLabel('Message as Ramesh').fill('I will join the visit.');
-    await page.getByRole('button', { name: 'Send as Ramesh', exact: true }).click();
+    await page.getByLabel('Message as Ramesh').press('Control+Enter');
     await expect(page.getByLabel('Message as Ramesh')).toHaveValue('');
     await expect(
       page.locator('.message-bubble.outbound').getByText('I will join the visit.', { exact: true }),
@@ -181,13 +199,57 @@ test('admin, greeting policy, persisted state, outages, and session revocation w
       page.locator('.message-list').getByText('I will join the visit.', { exact: true }),
     ).toHaveCount(0);
     await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByLabel('Message as Ramesh').fill('A draft to come back to.');
+    await page.getByRole('button', { name: 'Back to conversations' }).click();
+    await expect(page.getByRole('button', { name: /Kavya/ })).toBeFocused();
+    await page.getByLabel('Search conversations').fill('No such conversation');
+    await expect(page.getByText('No conversations found', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Clear filters' }).click();
+    await expect(page.getByLabel('Search conversations')).toHaveValue('');
+    await page.getByRole('button', { name: /Kavya/ }).click();
+    await expect(page.getByLabel('Message as Ramesh')).toHaveValue('A draft to come back to.');
+    await page.route('**/api/bot/status', async (route) => {
+      const response = await route.fetch();
+      const data = await response.json();
+      await route.fulfill({
+        response,
+        json: { ...data, metrics: { ...data.metrics, received: 123456789 } },
+      });
+    });
+    await expect(page.locator('.metric > strong').first()).toHaveAttribute(
+      'aria-label',
+      '123,456,789',
+    );
+    for (const width of [320, 768, 390]) {
+      await page.setViewportSize({ width, height: 844 });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true,
+      );
+      expect(
+        await page
+          .locator('.metric')
+          .first()
+          .evaluate((element) => element.scrollWidth <= element.clientWidth),
+      ).toBe(true);
+    }
+    await page.unroute('**/api/bot/status');
+    await page.getByRole('button', { name: 'Back to conversations' }).click();
+    await page.getByRole('button', { name: 'Groups', exact: true }).click();
+    await page.getByRole('button', { name: /Site visits/ }).click();
+    await expect(page.getByLabel('Message as Ramesh')).toHaveValue('');
+    await page.getByRole('button', { name: 'Back to conversations' }).click();
+    await page.getByRole('button', { name: 'Direct', exact: true }).click();
+    await page.getByRole('button', { name: /Kavya/ }).click();
+    await expect(page.getByLabel('Message as Ramesh')).toHaveValue('A draft to come back to.');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
     );
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
     await page.screenshot({ path: '/tmp/ramesh-inbox-mobile.png', fullPage: true });
     await page.setViewportSize({ width: 1440, height: 1100 });
     await page.getByRole('button', { name: 'Groups', exact: true }).click();
     await page.getByRole('button', { name: /Site visits/ }).click();
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
     await page.screenshot({ path: '/tmp/ramesh-inbox-desktop.png', fullPage: true });
   }
   if (process.env.BOT_WORKER_DIR) {

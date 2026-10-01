@@ -8,8 +8,9 @@ export function PairingCode({ value }: { value: string }) {
   useEffect(() => {
     if (canvas.current)
       void QRCode.toCanvas(canvas.current, value, {
-        width: 244,
-        margin: 2,
+        // Whole pixels per module and the full quiet zone keep dense WhatsApp QRs readable.
+        scale: 4,
+        margin: 4,
         errorCorrectionLevel: 'M',
       });
   }, [value]);

@@ -1,0 +1,15 @@
+{
+  "reference": "../rameshadmindesign.md",
+  "assets": [
+    {
+      "path": "public/images/warehouse-golden-hour.webp",
+      "mode": "Built-in image_gen, converted to WebP for delivery",
+      "prompt": "Use case: photorealistic-natural. Asset type: background photograph for the sign-in screen of the WareOnGo Ramesh admin portal. Primary request: cinematic editorial photograph of a modern logistics warehouse at golden hour, inspired by a warm parchment and midnight-wine software design. Scene: an elegant long corrugated warehouse facade receding in perspective, empty concrete loading apron, quiet open sky, no people, no vehicles. Composition: landscape 3:2 image, building on the right two thirds, soft generous sky above, restrained detail, believable architectural photography shot on 35mm film. Lighting: low amber sunlight, soft long shadows, warm desaturated stone and sand tones, muted warm blue sky, subtle natural grain. Avoid: logos, signs, text, watermarks, illustration, 3D render, artificial gradients, oversaturated colors. This is a photograph only; no UI elements."
+    },
+    {
+      "path": "src/app/fonts/InterVariable.woff2",
+      "source": "Existing WareOnGo Inter asset; self-hosted copy",
+      "license": "src/app/fonts/OFL.txt"
+    }
+  ]
+}

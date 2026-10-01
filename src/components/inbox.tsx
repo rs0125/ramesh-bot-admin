@@ -1,8 +1,9 @@
 'use client';
 /** Polls saved conversations and keeps per-chat drafts and idempotent send requests in memory. */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Conversation, ConversationPage, InboxMessage, InboxPage } from '../lib/worker-api';
+import { Icon } from './icon';
 
 type Draft = { text: string; pending?: { requestId: string; text: string } };
 const delivery: Record<string, string> = {
@@ -20,6 +21,14 @@ const stamp = (at: string) =>
     hour: '2-digit',
     minute: '2-digit',
   });
+const dateLabel = (at: string) =>
+  new Date(at).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' });
+const conversationStamp = (at: string) => {
+  const date = new Date(at);
+  return date.toDateString() === new Date().toDateString()
+    ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+};
 
 export function Inbox({ connected }: { connected: boolean }) {
   const router = useRouter();
@@ -122,18 +131,29 @@ export function Inbox({ connected }: { connected: boolean }) {
   }, []);
 
   return (
-    <section className="panel inbox-panel" id="inbox" aria-label="Ramesh inbox">
+    <section
+      className={`panel inbox-panel ${selected ? 'has-selection' : ''}`}
+      id="inbox"
+      aria-label="Ramesh inbox"
+    >
       <div className="panel-heading">
-        <div>
-          <h2>Ramesh’s inbox</h2>
-          <p className="muted">Direct messages, group conversations, and replies in one place.</p>
+        <div className="panel-title">
+          <span className="panel-icon">
+            <Icon name="inbox" />
+          </span>
+          <div>
+            <h2>Ramesh’s inbox</h2>
+            <p className="muted">Every conversation, a little closer.</p>
+          </div>
         </div>
         <span className="inbox-policy">
+          <Icon name="at" />
           {requireMention ? 'Group replies on mention' : 'Replies to all group messages'}
         </span>
       </div>
       {error && (
         <div className="inbox-error" role="alert">
+          <Icon name="alert" />
           {error}
         </div>
       )}
@@ -143,12 +163,28 @@ export function Inbox({ connected }: { connected: boolean }) {
             <label className="sr-only" htmlFor="inbox-search">
               Search conversations
             </label>
-            <input
-              id="inbox-search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search conversations…"
-            />
+            <div className="search-field">
+              <Icon name="search" />
+              <input
+                id="inbox-search"
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Find a conversation…"
+              />
+              {search && (
+                <button
+                  className="icon-button"
+                  aria-label="Clear search"
+                  onClick={() => {
+                    setSearch('');
+                    document.getElementById('inbox-search')?.focus();
+                  }}
+                >
+                  <Icon name="close" />
+                </button>
+              )}
+            </div>
             <div className="inbox-filters" aria-label="Conversation type">
               {[
                 ['all', 'All'],
@@ -157,42 +193,94 @@ export function Inbox({ connected }: { connected: boolean }) {
               ].map(([value, label]) => (
                 <button
                   key={value}
+                  aria-label={label}
                   aria-pressed={filter === value}
                   onClick={() => setFilter(value!)}
                 >
-                  {label}
+                  {label}{' '}
+                  {loaded && (
+                    <span className="filter-count">
+                      {
+                        conversations.filter(
+                          (item) => value === 'all' || item.isGroup === (value === 'groups'),
+                        ).length
+                      }
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
           </div>
-          <div className="conversation-list" aria-label="Conversations">
+          <div
+            className="conversation-list"
+            aria-label="Conversations"
+            aria-busy={!loaded && !error}
+          >
             {visible.map((item) => (
               <button
                 className={`conversation-item ${selectedId === item.chatId ? 'selected' : ''}`}
                 key={item.chatId}
+                id={`conversation-${item.chatId}`}
                 aria-pressed={selectedId === item.chatId}
                 onClick={() => setSelectedId(item.chatId)}
               >
-                <span className={`conversation-avatar ${item.isGroup ? 'group' : ''}`}>
-                  {item.isGroup ? '#' : item.name.slice(0, 1).toUpperCase()}
+                <span
+                  className={`conversation-avatar ${item.isGroup ? 'group' : ''}`}
+                  aria-hidden="true"
+                >
+                  {item.isGroup ? <Icon name="users" /> : item.name.slice(0, 1).toUpperCase()}
                 </span>
                 <span className="conversation-copy">
-                  <strong>{item.name}</strong>
+                  <span className="conversation-name">
+                    <strong>{item.name}</strong>
+                    <time dateTime={item.lastMessageAt}>
+                      {conversationStamp(item.lastMessageAt)}
+                    </time>
+                  </span>
+                  <span className="conversation-preview">{item.lastMessage}</span>
                   <small>
-                    {item.isGroup ? 'Group' : 'Direct message'} · {stamp(item.lastMessageAt)}
+                    {item.isGroup ? 'Group conversation' : 'Direct message'}{' '}
+                    {drafts[item.chatId]?.text && <span className="draft-indicator">· Draft</span>}
                   </small>
-                  <span>{item.lastMessage}</span>
                 </span>
               </button>
             ))}
             {!visible.length && (
-              <p className="inbox-placeholder">
-                {!loaded
-                  ? 'Loading conversations…'
-                  : search || filter !== 'all'
-                    ? 'No matching conversations.'
-                    : 'New conversations will appear here when Ramesh receives a message.'}
-              </p>
+              <div className="inbox-placeholder" role="status">
+                <Icon
+                  name={!loaded && !error ? 'refresh' : search ? 'search' : 'message'}
+                  className={!loaded && !error ? 'spinning' : ''}
+                />
+                <strong>
+                  {error && !loaded
+                    ? 'Inbox unavailable'
+                    : !loaded
+                      ? 'Finding your conversations…'
+                      : search || filter !== 'all'
+                        ? 'No conversations found'
+                        : 'A fresh start'}
+                </strong>
+                <p>
+                  {error && !loaded
+                    ? 'We’ll try again automatically.'
+                    : !loaded
+                      ? 'Just a moment.'
+                      : search || filter !== 'all'
+                        ? 'Try a different name or conversation type.'
+                        : 'Your first message will find its home here.'}
+                </p>
+                {(search || filter !== 'all') && (
+                  <button
+                    className="text-link"
+                    onClick={() => {
+                      setSearch('');
+                      setFilter('all');
+                    }}
+                  >
+                    Clear filters <Icon name="arrow" />
+                  </button>
+                )}
+              </div>
             )}
             {cursor && (
               <button
@@ -204,6 +292,10 @@ export function Inbox({ connected }: { connected: boolean }) {
               </button>
             )}
           </div>
+          <div className="conversation-list-footer">
+            <Icon name="shield" />
+            <span>Your team’s conversations, in one place.</span>
+          </div>
         </div>
         {selected ? (
           <ConversationThread
@@ -213,19 +305,40 @@ export function Inbox({ connected }: { connected: boolean }) {
             draft={drafts[selected.chatId] ?? { text: '' }}
             updateDraft={updateDraft}
             receive={receive}
+            onBack={() => {
+              setSelectedId(null);
+              requestAnimationFrame(() =>
+                document.getElementById(`conversation-${selected.chatId}`)?.focus(),
+              );
+            }}
           />
         ) : (
           <div className="thread-empty">
-            <span>↗</span>
-            <h3>Open a conversation</h3>
-            <p>Read messages and send a reply as Ramesh.</p>
-            <p>All group messages are saved. Tagged messages are highlighted.</p>
+            <span className="empty-icon">
+              <Icon name="message" />
+            </span>
+            <span className="eyebrow">A SPACE FOR EVERY CONVERSATION</span>
+            <h3>Pick up the conversation.</h3>
+            <p>
+              Choose a chat to see the whole picture
+              <br className="desktop-break" /> and send a thoughtful reply as Ramesh.
+            </p>
+            <div className="thread-empty-details">
+              <span>
+                <Icon name="users" /> Direct & group messages
+              </span>
+              <span>
+                <Icon name="at" /> Mentions, easy to find
+              </span>
+            </div>
           </div>
         )}
       </div>
       <div className="inbox-footnote">
-        History is kept for 30 days and supplies Ramesh’s recent conversation context. Messages
-        received before history was enabled may be unavailable.
+        <span>
+          <Icon name="clock" /> 30 days of conversation history
+        </span>
+        <span>Earlier messages may be unavailable.</span>
       </div>
     </section>
   );
@@ -237,12 +350,14 @@ function ConversationThread({
   draft,
   updateDraft,
   receive,
+  onBack,
 }: {
   conversation: Conversation;
   connected: boolean;
   draft: Draft;
   updateDraft: (chatId: string, update: (value: Draft) => Draft) => void;
   receive: <T>(response: Response) => Promise<T>;
+  onBack: () => void;
 }) {
   const { chatId } = conversation;
   const [messages, setMessages] = useState<InboxMessage[]>([]);
@@ -260,6 +375,12 @@ function ConversationThread({
   const paged = useRef(false);
   const scroll = useRef<HTMLDivElement>(null);
   const follow = useRef(true);
+  const threadHeading = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    if (window.matchMedia('(max-width: 700px)').matches)
+      threadHeading.current?.focus({ preventScroll: true });
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -370,12 +491,29 @@ function ConversationThread({
   return (
     <div className="conversation-thread">
       <div className="thread-heading">
-        <div>
-          <h3>{conversation.name}</h3>
-          <p>
-            {conversation.isGroup ? 'Group conversation' : 'Direct message'}{' '}
-            <span title={chatId}>· {chatId}</span>
-          </p>
+        <button
+          type="button"
+          className="icon-button thread-back"
+          aria-label="Back to conversations"
+          onClick={onBack}
+        >
+          <Icon name="back" />
+        </button>
+        <span
+          className={`conversation-avatar ${conversation.isGroup ? 'group' : ''}`}
+          aria-hidden="true"
+        >
+          {conversation.isGroup ? (
+            <Icon name="users" />
+          ) : (
+            conversation.name.slice(0, 1).toUpperCase()
+          )}
+        </span>
+        <div className="thread-title">
+          <h3 tabIndex={-1} ref={threadHeading}>
+            {conversation.name}
+          </h3>
+          <p>{conversation.isGroup ? 'Group conversation' : 'Direct message'} · WhatsApp</p>
         </div>
         {conversation.isGroup && (
           <label className="mentions-toggle">
@@ -383,13 +521,14 @@ function ConversationThread({
               type="checkbox"
               checked={mentionsOnly}
               onChange={(event) => setMentionsOnly(event.target.checked)}
-            />{' '}
-            Tagged only
+            />
+            <Icon name="at" /> Tagged only
           </label>
         )}
       </div>
       {error && (
         <div className="inbox-error" role="alert">
+          <Icon name="alert" />
           {error}
         </div>
       )}
@@ -402,6 +541,10 @@ function ConversationThread({
             follow.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80;
         }}
         aria-label="Messages"
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions text"
+        tabIndex={0}
       >
         {cursor && (
           <button
@@ -421,45 +564,83 @@ function ConversationThread({
                 : 'No saved messages yet.'}
           </p>
         )}
-        {visible.map((item) => (
-          <article className={`message-bubble ${item.direction}`} key={item.id}>
-            <div className="message-meta">
-              <strong>{item.senderName}</strong>
-              {item.mentionsBot && <span className="mention-badge">@Ramesh</span>}
-              {item.direction === 'outbound' && (
-                <span>{item.source === 'admin' ? 'Admin message' : 'Automatic reply'}</span>
-              )}
-            </div>
-            <p>{item.text}</p>
-            <div className="message-bottom">
-              <time dateTime={item.at}>{stamp(item.at)}</time>
-              {item.direction === 'outbound' && (
-                <span
-                  className={
-                    ['UNCERTAIN', 'FAILED', 'EXPIRED'].includes(item.status) ? 'delivery-issue' : ''
-                  }
-                >
-                  {delivery[item.status] ?? item.status}
-                </span>
-              )}
-            </div>
-            {item.status === 'UNCERTAIN' && (
-              <small className="delivery-issue">
-                WhatsApp may have received this message. It will not be retried automatically.
-              </small>
+        {visible.map((item, index) => (
+          <Fragment key={item.id}>
+            {(index === 0 || dateLabel(item.at) !== dateLabel(visible[index - 1]!.at)) && (
+              <div className="message-date">
+                <span>{dateLabel(item.at)}</span>
+              </div>
             )}
-          </article>
+            <article className={`message-bubble ${item.direction}`}>
+              <div className="message-meta">
+                <strong>{item.senderName}</strong>
+                {item.mentionsBot && (
+                  <span className="mention-badge">
+                    <Icon name="at" /> Ramesh
+                  </span>
+                )}
+                {item.direction === 'outbound' && (
+                  <span>{item.source === 'admin' ? 'Admin message' : 'Automatic reply'}</span>
+                )}
+              </div>
+              <p>{item.text}</p>
+              <div className="message-bottom">
+                <time dateTime={item.at}>{stamp(item.at)}</time>
+                {item.direction === 'outbound' && (
+                  <span
+                    className={
+                      ['UNCERTAIN', 'FAILED', 'EXPIRED'].includes(item.status)
+                        ? 'delivery-issue'
+                        : ''
+                    }
+                  >
+                    <Icon
+                      name={
+                        item.status === 'SENT'
+                          ? 'checkDouble'
+                          : ['UNCERTAIN', 'FAILED', 'EXPIRED'].includes(item.status)
+                            ? 'alert'
+                            : 'clock'
+                      }
+                    />
+                    {delivery[item.status] ?? item.status}
+                  </span>
+                )}
+              </div>
+              {item.status === 'UNCERTAIN' && (
+                <small className="delivery-issue">
+                  WhatsApp may have received this message. It will not be retried automatically.
+                </small>
+              )}
+            </article>
+          </Fragment>
         ))}
       </div>
       <form className="message-composer" onSubmit={(event) => void send(event)}>
-        <label htmlFor="message-draft">Message as Ramesh</label>
+        <div className="composer-heading">
+          <label htmlFor="message-draft">
+            <Icon name="message" /> Message as Ramesh
+          </label>
+          <span>{draft.text.length.toLocaleString()} / 4,000</span>
+        </div>
         <textarea
           id="message-draft"
           rows={3}
           maxLength={4000}
           value={draft.text}
           readOnly={!!draft.pending}
+          aria-describedby="composer-hint"
           onChange={(event) => updateDraft(chatId, () => ({ text: event.target.value }))}
+          onKeyDown={(event) => {
+            if (
+              (event.ctrlKey || event.metaKey) &&
+              event.key === 'Enter' &&
+              !event.nativeEvent.isComposing
+            ) {
+              event.preventDefault();
+              event.currentTarget.form?.requestSubmit();
+            }
+          }}
           placeholder={`Write to ${conversation.name}…`}
         />
         {sendError && (
@@ -469,10 +650,8 @@ function ConversationThread({
           </p>
         )}
         <div className="composer-actions">
-          <span role="status">
-            {!connected
-              ? 'Connect WhatsApp to send.'
-              : notice || `${draft.text.length.toLocaleString()} / 4,000`}
+          <span role="status" id="composer-hint">
+            {!connected ? 'Connect WhatsApp to send.' : notice || 'Ctrl / ⌘ + Enter to send'}
           </span>
           <button
             className="button primary"
@@ -480,6 +659,7 @@ function ConversationThread({
             type="submit"
           >
             {sending ? 'Submitting…' : draft.pending ? 'Retry send request' : 'Send as Ramesh'}
+            <Icon name={sending ? 'refresh' : 'send'} className={sending ? 'spinning' : ''} />
           </button>
         </div>
       </form>

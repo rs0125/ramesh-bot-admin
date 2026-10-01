@@ -4,7 +4,7 @@ Standalone Next.js + TypeScript admin for the sales WhatsApp worker. It provides
 
 This project has its own package, lockfile and CI/CD. It has no Prisma/Baileys dependency, shared npm package, or runtime dependency on a neighboring checkout. Its only connection to the worker is the versioned HTTP API configured by `WORKER_API_URL`.
 
-Reviewed **1 October 2026**, alongside the worker's employee identity/OAuth increment. The worker runs an OpenAI Terra `converser → formatter` LangGraph flow and separate Supabase `ramesh-inbound-queue` / `ramesh-outbound-queue` tables. Trusted phone/LID resolution and encrypted employee OAuth enrollment, refresh, expiry, and revocation are implemented outside the graph. Context Engine business tools, planner/worker/verifier agents, reminders, and writes remain disconnected. These additions preserve the existing admin API.
+Reviewed **1 October 2026**, alongside the worker's trusted identity and signed Context Engine increment. The worker runs OpenAI Terra through `converser → formatter` in LangGraph and separate Supabase `ramesh-inbound-queue` / `ramesh-outbound-queue` tables. Trusted phone/LID resolution and signed employee-scoped requests are implemented outside the graph. No per-employee OAuth enrollment is needed for this path. Business tools, planner/worker/verifier, reminders and writes remain disconnected. The existing admin API is unchanged.
 
 The inbox requires the worker's `202610010003_inbox.sql` Supabase migration and compatible worker endpoints before rollout. It reads encrypted history through the worker; model keys, MCP credentials, and Supabase connections stay outside this application. History is retained for 30 days and also supplies the worker's recent conversation context. Text cleared by older releases is unavailable. Employee grants, agent traces, and the separate chat playground remain outside this console.
 
@@ -22,7 +22,7 @@ npm run dev
 
 Edit `.env.local` before signing in. Set `WORKER_API_TOKEN` to the worker's token, `WORKER_API_URL=http://127.0.0.1:3011`, and `ADMIN_ORIGIN=http://127.0.0.1:3010`. `setup:local` creates missing admin secrets without printing them. Find `ADMIN_PASSWORD` in that file. Start the worker separately and open the configured admin origin.
 
-The worker must be reachable even for sign-in because it stores login limits and revocable sessions. Only trusted operators should be given the pairing screen. Employee-to-CRM authorization is a separate worker adapter; operator login does not create an employee grant. Live enrollment uses the worker's protected CLI and explicit Context Engine consent, as described in its [identity/OAuth runbook](https://github.com/rs0125/ramesh-bot/blob/main/docs/employee-identity-and-oauth.md). This console has no enrollment UI or callback route.
+The worker must be reachable even for sign-in because it stores login limits and revocable sessions. Only trusted operators should receive pairing access. Employee-to-CRM authorization is separate: the worker signs trusted employee requests and Context Engine checks current permissions. The signing key stays outside this admin. See [signed access operations](https://github.com/rs0125/ramesh-bot/blob/main/docs/signed-context-auth.md). This console has no credential export, OAuth callback or enrollment UI.
 
 ## Fake chat testing and production administration
 

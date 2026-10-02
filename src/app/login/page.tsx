@@ -9,62 +9,35 @@ export default function LoginPage() {
       <header className="login-header">
         <Brand />
         <span className="access-label">
-          <Icon name="lock" /> Private workspace
+          <Icon name="lock" /> Admin access
         </span>
       </header>
       <main className="login-main" id="main-content">
-        <section className="login-editorial" aria-label="Meet your Ramesh workspace">
+        <section className="login-editorial" aria-label="About Ramesh admin">
           <div className="login-editorial-copy">
-            <span className="eyebrow">A LITTLE CLOSER TO EVERY CONVERSATION</span>
             <h2>
-              Good conversations.
+              Manage WhatsApp
               <br />
-              Great connections.
+              with Ramesh.
             </h2>
-            <p>
-              A thoughtful workspace for the people
-              <br className="desktop-break" /> and places that keep business moving.
-            </p>
+            <p>Read conversations, send replies, and manage the connection.</p>
           </div>
-          <div className="login-photo">
-            <div className="login-floating-card">
-              <span className="floating-card-icon">
-                <Icon name="message" />
-              </span>
-              <div>
-                <span className="small-label">MEET RAMESH</span>
-                <strong>Your conversations, together.</strong>
-                <p>One inbox. A little more clarity.</p>
-              </div>
-              <Icon name="upRight" />
-            </div>
-            <span className="photo-caption">SPACES FOR BUSINESS. ROOM FOR CONNECTION.</span>
-          </div>
+          <div className="login-photo" aria-hidden="true" />
         </section>
         <section className="login-access" aria-labelledby="login-title">
           <div className="login-card">
             <span className="login-lock">
               <Icon name="lock" />
             </span>
-            <span className="eyebrow">YOUR RAMESH WORKSPACE</span>
-            <h1 id="login-title">Welcome back.</h1>
-            <p className="muted">Sign in to keep your conversations moving.</p>
+            <h1 id="login-title">Sign in to Ramesh</h1>
             <LoginForm />
             <div className="login-help">
               <Icon name="shield" />
-              <p>
-                For the WareOnGo team.
-                <br />
-                <span>Need access? Contact your workspace administrator.</span>
-              </p>
+              <p>Need the password? Ask your administrator.</p>
             </div>
           </div>
         </section>
       </main>
-      <footer className="login-footer">
-        <span>WareOnGo · Made for better connections.</span>
-        <span>Ramesh admin workspace</span>
-      </footer>
     </div>
   );
 }

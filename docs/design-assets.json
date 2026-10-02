@@ -10,6 +10,25 @@
       "path": "src/app/fonts/InterVariable.woff2",
       "source": "Existing WareOnGo Inter asset; self-hosted copy",
       "license": "src/app/fonts/OFL.txt"
+    },
+    {
+      "path": "public/images/wareongo-logo.png",
+      "source": "../Backend_Repository/src/ppt/assets/WOG_logo_Transparent.png",
+      "mode": "Original WareOnGo transparent logo, copied without altering the image",
+      "treatment": "CSS frames only the transparent padding and reduces saturation to 72%; artwork and aspect ratio are preserved."
+    },
+    {
+      "path": "src/app/icon.png",
+      "source": "../Frontend_Repository/public/WOG_logo.png",
+      "mode": "Original square WareOnGo logo used as the browser icon, copied unchanged"
+    },
+    {
+      "path": "src/components/icon.tsx",
+      "source": "https://github.com/phosphor-icons/react",
+      "package": "@phosphor-icons/react@2.1.10",
+      "mode": "Duotone icons imported individually through the SSR entry points; no external runtime requests",
+      "license": "public/licenses/phosphor-icons.txt"
     }
-  ]
+  ],
+  "palette": "Warm parchment and charcoal from the reference, with desaturated WareOnGo navy actions, pale blue selected states, and separate clay-red errors."
 }

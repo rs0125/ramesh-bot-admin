@@ -9,13 +9,10 @@ import {
 import { validChatId, validCursor, validSend } from '../../../../lib/inbox';
 import { BodyError, readJson } from '../../../../lib/json-body';
 
-function failure(error: unknown) {
+function failure(error: unknown, fallback: string) {
   if (error instanceof BodyError || error instanceof WorkerRequestError)
     return privateJson({ error: error.message }, error.status);
-  return privateJson(
-    { error: 'The inbox is unavailable. Check the worker connection and try again.' },
-    503,
-  );
+  return privateJson({ error: fallback }, 503);
 }
 export async function GET(request: Request) {
   try {
@@ -29,7 +26,7 @@ export async function GET(request: Request) {
       chatId ? await requestMessages(chatId, cursor) : await requestConversations(cursor),
     );
   } catch (error) {
-    return failure(error);
+    return failure(error, 'Could not load the inbox. Try again, or contact your administrator.');
   }
 }
 export async function POST(request: Request) {
@@ -41,6 +38,6 @@ export async function POST(request: Request) {
       return privateJson({ error: 'Choose a conversation and enter 1–4000 characters' }, 400);
     return privateJson(await sendMessage({ ...body, text: body.text.trim() }), 202);
   } catch (error) {
-    return failure(error);
+    return failure(error, 'Could not confirm whether the message was sent.');
   }
 }

@@ -48,8 +48,7 @@ export async function POST(request: Request) {
     if (error instanceof BodyError) return privateJson({ error: error.message }, error.status);
     return privateJson(
       {
-        error:
-          'Sign-in is temporarily unavailable. Check the admin configuration and worker connection.',
+        error: 'Sign-in is unavailable. Try again, or contact your administrator.',
       },
       503,
     );

@@ -1,5 +1,6 @@
 /** End-to-end assertions cover real HTTP/cookies/SQLite; only WhatsApp events are synthetic. */
 import { test, expect } from '@playwright/test';
+import { adversarialFlows } from './adversarial-flows';
 test.describe.configure({ mode: 'serial' });
 
 const origin = 'http://127.0.0.1:4310';
@@ -60,19 +61,31 @@ test('admin, greeting policy, persisted state, outages, and session revocation w
   await page.goto('/');
   await expect(page).toHaveURL(/\/login$/);
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.screenshot({ path: '/tmp/ramesh-login-desktop.png', fullPage: true });
+  await page.screenshot({
+    animations: 'disabled',
+    path: '/tmp/ramesh-login-desktop.png',
+    fullPage: true,
+  });
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.screenshot({ path: '/tmp/ramesh-login-mobile.png', fullPage: true });
+  await page.screenshot({
+    animations: 'disabled',
+    path: '/tmp/ramesh-login-mobile.png',
+    fullPage: true,
+  });
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.getByLabel('Admin password').fill(password);
   await page.getByRole('button', { name: 'Show password' }).click();
   await expect(page.getByLabel('Admin password')).toHaveAttribute('type', 'text');
   await page.getByRole('button', { name: 'Hide password' }).click();
   await expect(page.getByLabel('Admin password')).toHaveAttribute('type', 'password');
-  await page.getByRole('button', { name: 'Open workspace' }).click();
-  await expect(page.getByRole('heading', { name: 'Bot overview' })).toBeVisible();
-  await page.screenshot({ path: '/tmp/ramesh-overview-desktop.png', fullPage: true });
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
+  await page.screenshot({
+    animations: 'disabled',
+    path: '/tmp/ramesh-overview-desktop.png',
+    fullPage: true,
+  });
   const cookie = (await context.cookies()).find((item) => item.name === 'wog_bot_admin')!;
   expect(cookie.httpOnly).toBe(true);
   expect(cookie.sameSite).toBe('Strict');
@@ -104,18 +117,20 @@ test('admin, greeting policy, persisted state, outages, and session revocation w
   );
   await page.getByRole('button', { name: 'Connect WhatsApp' }).click();
   await expect(page.getByRole('img', { name: /Scan this QR/ })).toBeVisible();
-  await page.locator('.connection-panel').screenshot({ path: '/tmp/ramesh-pairing.png' });
+  await page
+    .locator('.connection-panel')
+    .screenshot({ animations: 'disabled', path: '/tmp/ramesh-pairing.png' });
   await simulate({ action: 'pair' });
-  await expect(page.getByRole('heading', { name: 'You’re connected' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'WhatsApp is connected' })).toBeVisible();
   await expect(page.getByRole('img', { name: /Scan this QR/ })).toHaveCount(0);
   if (!process.env.BOT_WORKER_DIR) {
-    await expect(page.getByRole('heading', { name: 'Ramesh’s inbox' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Inbox' })).toBeVisible();
     await page.getByRole('button', { name: /Site visits/ }).click();
     await expect(
       page.getByText('The site visit is tomorrow at 10.', { exact: true }),
     ).toBeVisible();
     await expect(page.locator('.message-bubble').getByText('Alice', { exact: true })).toBeVisible();
-    await page.getByLabel('Tagged only').check();
+    await page.getByLabel('Mentions of Ramesh').check();
     await expect(
       page
         .locator('.message-bubble')
@@ -126,7 +141,7 @@ test('admin, greeting policy, persisted state, outages, and session revocation w
         .locator('.message-bubble')
         .getByText('@Ramesh can you confirm the visit?', { exact: true }),
     ).toBeVisible();
-    await page.getByLabel('Tagged only').uncheck();
+    await page.getByLabel('Mentions of Ramesh').uncheck();
     const sendBody = {
       chatId: '123456@g.us',
       text: 'Hello',
@@ -156,9 +171,11 @@ test('admin, greeting policy, persisted state, outages, and session revocation w
         })
       ).status(),
     ).toBe(404);
-    await page.getByLabel('Message as Ramesh').fill('I will join the visit.');
-    await page.getByLabel('Message as Ramesh').press('Control+Enter');
-    await expect(page.getByLabel('Message as Ramesh')).toHaveValue('');
+    await page.getByLabel('Mentions of Ramesh').check();
+    await page.getByLabel('Message', { exact: true }).fill('I will join the visit.');
+    await page.getByLabel('Message', { exact: true }).press('Control+Enter');
+    await expect(page.getByLabel('Message', { exact: true })).toHaveValue('');
+    await expect(page.getByLabel('Mentions of Ramesh')).not.toBeChecked();
     await expect(
       page.locator('.message-bubble.outbound').getByText('I will join the visit.', { exact: true }),
     ).toBeVisible();
@@ -176,14 +193,14 @@ test('admin, greeting policy, persisted state, outages, and session revocation w
       expect((await route.fetch()).status()).toBe(202);
       await route.abort('failed');
     });
-    await page.getByLabel('Message as Ramesh').fill('Accepted despite a lost response.');
+    await page.getByLabel('Message', { exact: true }).fill('Accepted despite a lost response.');
     await page.getByRole('button', { name: 'Send as Ramesh', exact: true }).click();
     await expect(
       page
         .locator('.message-bubble.outbound')
         .getByText('Accepted despite a lost response.', { exact: true }),
     ).toHaveCount(1);
-    await expect(page.getByLabel('Message as Ramesh')).toHaveValue('');
+    await expect(page.getByLabel('Message', { exact: true })).toHaveValue('');
     await page.unroute('**/api/bot/inbox');
     await page.reload();
     await page.getByRole('button', { name: /Site visits/ }).click();
@@ -199,15 +216,17 @@ test('admin, greeting policy, persisted state, outages, and session revocation w
       page.locator('.message-list').getByText('I will join the visit.', { exact: true }),
     ).toHaveCount(0);
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.getByLabel('Message as Ramesh').fill('A draft to come back to.');
+    await page.getByLabel('Message', { exact: true }).fill('A draft to come back to.');
     await page.getByRole('button', { name: 'Back to conversations' }).click();
     await expect(page.getByRole('button', { name: /Kavya/ })).toBeFocused();
     await page.getByLabel('Search conversations').fill('No such conversation');
-    await expect(page.getByText('No conversations found', { exact: true })).toBeVisible();
+    await expect(page.getByText('No matches', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Clear filters' }).click();
     await expect(page.getByLabel('Search conversations')).toHaveValue('');
     await page.getByRole('button', { name: /Kavya/ }).click();
-    await expect(page.getByLabel('Message as Ramesh')).toHaveValue('A draft to come back to.');
+    await expect(page.getByLabel('Message', { exact: true })).toHaveValue(
+      'A draft to come back to.',
+    );
     await page.route('**/api/bot/status', async (route) => {
       const response = await route.fetch();
       const data = await response.json();
@@ -236,21 +255,31 @@ test('admin, greeting policy, persisted state, outages, and session revocation w
     await page.getByRole('button', { name: 'Back to conversations' }).click();
     await page.getByRole('button', { name: 'Groups', exact: true }).click();
     await page.getByRole('button', { name: /Site visits/ }).click();
-    await expect(page.getByLabel('Message as Ramesh')).toHaveValue('');
+    await expect(page.getByLabel('Message', { exact: true })).toHaveValue('');
     await page.getByRole('button', { name: 'Back to conversations' }).click();
     await page.getByRole('button', { name: 'Direct', exact: true }).click();
     await page.getByRole('button', { name: /Kavya/ }).click();
-    await expect(page.getByLabel('Message as Ramesh')).toHaveValue('A draft to come back to.');
+    await expect(page.getByLabel('Message', { exact: true })).toHaveValue(
+      'A draft to come back to.',
+    );
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
     );
     await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
-    await page.screenshot({ path: '/tmp/ramesh-inbox-mobile.png', fullPage: true });
+    await page.screenshot({
+      animations: 'disabled',
+      path: '/tmp/ramesh-inbox-mobile.png',
+      fullPage: true,
+    });
     await page.setViewportSize({ width: 1440, height: 1100 });
     await page.getByRole('button', { name: 'Groups', exact: true }).click();
     await page.getByRole('button', { name: /Site visits/ }).click();
     await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
-    await page.screenshot({ path: '/tmp/ramesh-inbox-desktop.png', fullPage: true });
+    await page.screenshot({
+      animations: 'disabled',
+      path: '/tmp/ramesh-inbox-desktop.png',
+      fullPage: true,
+    });
   }
   if (process.env.BOT_WORKER_DIR) {
     const dm = message('dm-1');
@@ -290,7 +319,7 @@ test('admin, greeting policy, persisted state, outages, and session revocation w
   await page.getByRole('button', { name: 'Disconnect', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Connect WhatsApp' })).toBeEnabled();
   if (!process.env.BOT_WORKER_DIR) {
-    await page.getByLabel('Message as Ramesh').fill('Draft while disconnected');
+    await page.getByLabel('Message', { exact: true }).fill('Draft while disconnected');
     await expect(page.getByRole('button', { name: 'Send as Ramesh', exact: true })).toBeDisabled();
   }
   await supervisor('restart-worker');
@@ -304,6 +333,19 @@ test('admin, greeting policy, persisted state, outages, and session revocation w
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.getByRole('button', { name: /Sign out/ }).click();
+  if (!process.env.BOT_WORKER_DIR) {
+    const dialog = page.getByRole('dialog', { name: 'Discard drafts and sign out?' });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Keep drafts' })).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(dialog).not.toBeVisible();
+    await expect(page.getByRole('button', { name: 'Sign out', exact: true })).toBeFocused();
+    await expect(page.getByLabel('Message', { exact: true })).toHaveValue(
+      'Draft while disconnected',
+    );
+    await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Discard drafts and sign out' }).click();
+  }
   await expect(page).toHaveURL(/\/login$/);
   expect(
     (
@@ -314,6 +356,240 @@ test('admin, greeting policy, persisted state, outages, and session revocation w
   ).toBe(401);
   expect(errors).toEqual([]);
 });
+
+test('reading position, focus navigation, recovery, and drafts survive normal operator workflows', async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  const group = '123456@g.us';
+  const started = Date.now() - 3600_000;
+  const history = Array.from({ length: 40 }, (_, index) => ({
+    id: `ux-message-${index}`,
+    chatId: group,
+    text: `Site update ${index + 1}: the team is reviewing the warehouse access and loading area.`,
+    senderId: 'alice@lid',
+    senderName: 'Alice',
+    direction: 'inbound',
+    source: 'whatsapp',
+    mentionsBot: index % 5 === 0,
+    at: new Date(started + index * 1000).toISOString(),
+    status: 'RECEIVED',
+    kind: 'text',
+  }));
+  let messagesUnavailable = true;
+  let statusUnavailable = false;
+  let conversationsPaged = false;
+  const status = {
+    state: 'connected',
+    qr: null,
+    updatedAt: new Date(started).toISOString(),
+    startedAt: new Date(started).toISOString(),
+    metrics: { received: 40, replied: 0, duplicates: 0, errors: 0, dropped: 0 },
+    events: [],
+  };
+  await page.route('**/api/bot/status', (route) =>
+    route.fulfill(
+      statusUnavailable
+        ? {
+            status: 503,
+            json: { error: 'Status service temporarily unavailable' },
+          }
+        : { json: status },
+    ),
+  );
+  await page.route('**/api/bot/control', (route) =>
+    route.fulfill({
+      status: 503,
+      json: { error: 'The connection change could not be confirmed.' },
+    }),
+  );
+  await page.route('**/api/bot/inbox**', async (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.has('chatId')) {
+      await route.fulfill(
+        messagesUnavailable
+          ? { status: 503, json: { error: 'History temporarily unavailable' } }
+          : { json: { messages: history, nextCursor: null } },
+      );
+    } else {
+      if (url.searchParams.has('cursor')) conversationsPaged = true;
+      await route.fulfill({
+        json: {
+          conversations: [
+            {
+              chatId: group,
+              name: 'Site visits',
+              isGroup: true,
+              lastMessage: history.at(-1)!.text,
+              lastMessageAt: history.at(-1)!.at,
+            },
+          ],
+          nextCursor: conversationsPaged ? null : 'next-conversations',
+          groupRepliesRequireMention: true,
+        },
+      });
+    }
+  });
+  await page.goto('/login');
+  await page.getByLabel('Admin password').fill(password);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
+  await expect(page.getByText('Search covers 1 loaded conversation.')).toBeVisible();
+  await page.getByLabel('Search conversations').fill('Unloaded contact');
+  await expect(
+    page.getByText('No matches in loaded conversations', { exact: false }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Load more conversations', exact: true }).click();
+  await expect(
+    page.getByRole('button', { name: 'Load more conversations', exact: true }),
+  ).toHaveCount(0);
+  await page.getByRole('button', { name: 'Clear filters' }).click();
+  await page.getByRole('button', { name: /Site visits/ }).click();
+  await expect(page.getByText('Messages could not be loaded. Try again above.')).toBeVisible();
+  await expect(page.getByText('Loading messages…', { exact: true })).toHaveCount(0);
+  messagesUnavailable = false;
+  await page.locator('.conversation-thread').getByRole('button', { name: 'Try again' }).click();
+  await expect(page.locator('.message-bubble')).toHaveCount(40);
+
+  const messages = page.getByRole('log', { name: 'Messages' });
+  const nextPoll = page.waitForResponse((response) =>
+    new URL(response.url()).searchParams.has('chatId'),
+  );
+  const readingPosition = await messages.evaluate((element) => {
+    element.scrollTop = element.scrollHeight - element.clientHeight - 24;
+    return element.scrollTop;
+  });
+  await (await nextPoll).finished();
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
+  expect(await messages.evaluate((element) => element.scrollTop)).toBeCloseTo(readingPosition, 0);
+
+  await messages.evaluate((element) => {
+    element.scrollTop = 200;
+  });
+  await expect(page.getByRole('button', { name: 'Jump to latest', exact: true })).toBeVisible();
+  history.push({
+    ...history[0]!,
+    id: 'ux-new-message',
+    text: 'A new update arrived while you were reading.',
+    at: new Date().toISOString(),
+  });
+  await page.getByRole('button', { name: '1 new message · Jump to latest', exact: true }).waitFor();
+  expect(await messages.evaluate((element) => element.scrollTop)).toBeCloseTo(200, 0);
+  await page.getByRole('button', { name: '1 new message · Jump to latest', exact: true }).click();
+  await expect(page.getByRole('button', { name: /Jump to latest/ })).toHaveCount(0);
+  expect(
+    await messages.evaluate(
+      (element) => element.scrollHeight - element.clientHeight - element.scrollTop,
+    ),
+  ).toBeLessThan(2);
+
+  await page.getByLabel('Message', { exact: true }).fill('Keep this draft through focus changes.');
+  await page.getByRole('button', { name: 'Expand inbox', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Overview' })).not.toBeVisible();
+  await expect(page.getByLabel('Message', { exact: true })).toHaveValue(
+    'Keep this draft through focus changes.',
+  );
+  await expect(page.getByRole('link', { name: 'Inbox', exact: true })).toHaveAttribute(
+    'aria-current',
+    'location',
+  );
+  for (const width of [320, 390, 768, 1440]) {
+    await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    const target = await page
+      .getByRole('button', { name: 'Send as Ramesh', exact: true })
+      .boundingBox();
+    expect(target!.height).toBeGreaterThanOrEqual(44);
+    const footer = await page.locator('.inbox-footnote').boundingBox();
+    expect(target!.y + target!.height).toBeLessThanOrEqual(footer!.y);
+    const composer = await page.locator('.message-composer').boundingBox();
+    const readingArea = await messages.boundingBox();
+    expect(readingArea!.y + readingArea!.height).toBeLessThanOrEqual(composer!.y + 1);
+    await expect(page.getByLabel('Message', { exact: true })).toHaveValue(
+      'Keep this draft through focus changes.',
+    );
+  }
+  await page.getByRole('link', { name: 'Connection', exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: 'WhatsApp connection', exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Expand inbox', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Connection', exact: true })).toHaveAttribute(
+    'aria-current',
+    'location',
+  );
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+  await expect(page.getByRole('link', { name: 'Overview', exact: true })).toHaveAttribute(
+    'aria-current',
+    'location',
+  );
+
+  await page.getByRole('button', { name: 'Reconnect', exact: true }).click();
+  const actionError = page.locator('.action-feedback');
+  await expect(actionError).toBeVisible();
+  await (await page.waitForResponse('**/api/bot/status')).finished();
+  await expect(page.getByRole('button', { name: 'Reconnect', exact: true })).toBeEnabled();
+  await expect(actionError).toBeVisible();
+  await expect(actionError).not.toContainText('Retrying automatically');
+  await page.getByRole('button', { name: 'Dismiss action error' }).click();
+  await expect(actionError).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Expand inbox', exact: true }).click();
+  statusUnavailable = true;
+  await expect(
+    page.getByText('Connection status is unavailable. You can still write a draft.'),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Send as Ramesh', exact: true })).toBeDisabled();
+  await page.locator('.message-composer').getByRole('link', { name: 'Manage connection' }).click();
+  await expect(page.getByRole('button', { name: 'Expand inbox', exact: true })).toBeVisible();
+  statusUnavailable = false;
+  await expect(page.getByRole('button', { name: 'Send as Ramesh', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: 'Expand inbox', exact: true }).click();
+  await page.screenshot({
+    animations: 'disabled',
+    path: '/tmp/ramesh-ux-focus-desktop.png',
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({
+    animations: 'disabled',
+    path: '/tmp/ramesh-ux-focus-mobile.png',
+    fullPage: true,
+  });
+
+  const departure = page.waitForEvent('dialog');
+  const navigation = page.goto('/login').catch(() => null);
+  const prompt = await departure;
+  expect(prompt.type()).toBe('beforeunload');
+  await prompt.dismiss();
+  await navigation;
+  await expect(page.getByLabel('Message', { exact: true })).toHaveValue(
+    'Keep this draft through focus changes.',
+  );
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Discard drafts and sign out?' });
+  await expect(dialog.getByRole('button', { name: 'Keep drafts' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(dialog.getByRole('button', { name: 'Discard drafts and sign out' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(dialog.getByRole('button', { name: 'Keep drafts' })).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(dialog.getByRole('button', { name: 'Discard drafts and sign out' })).toBeFocused();
+  await dialog.getByRole('button', { name: 'Keep drafts' }).click();
+  await expect(page.getByRole('button', { name: 'Sign out', exact: true })).toBeFocused();
+  await page.getByLabel('Message', { exact: true }).fill('');
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+  await expect(page).toHaveURL(/\/login$/);
+});
+
+adversarialFlows();
 
 test('login limits survive admin restarts and untrusted forwarding headers', async ({
   request,

@@ -9,8 +9,7 @@ export async function GET() {
   } catch {
     return privateJson(
       {
-        error:
-          'The bot worker is unreachable. Check that it is running and its API settings match.',
+        error: 'Could not reach Ramesh. Try again, or contact your administrator.',
       },
       503,
     );

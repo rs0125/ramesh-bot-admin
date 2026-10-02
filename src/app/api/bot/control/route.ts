@@ -16,8 +16,7 @@ export async function POST(request: Request) {
     if (error instanceof BodyError) return privateJson({ error: error.message }, error.status);
     return privateJson(
       {
-        error:
-          'The worker could not complete that action. Check its current status before retrying.',
+        error: 'Check the connection status before trying again.',
       },
       503,
     );

@@ -38,7 +38,7 @@ For conversational testing, run `npm run dev:chat` **in the worker repository** 
 
 This admin at port **3010** controls the worker named by `WORKER_API_URL`. Pointing it at production makes its connect/disconnect/reconnect controls affect the real account. The live linked account belongs to EC2; do not start the retired local pairing alongside it or send real WhatsApp test messages.
 
-The current EC2 API is private. Use the [documented SSM tunnel](https://github.com/rs0125/ramesh-bot/blob/main/docs/ec2-operations.md) on local port **3013**, set `WORKER_API_URL=http://127.0.0.1:3013`, and privately configure the matching production worker token. Keep the tunnel running. This leaves port 3012 available for the fake chat GUI. A Vercel deployment requires a separately provisioned authenticated network path to EC2.
+The production worker API is **`https://wareongo-ramesh.duckdns.org`**, verified on 3 October 2026. Set server-side `WORKER_API_URL` to that origin and privately configure the matching production worker token. Caddy runs on the worker's own EC2 instance; only ports 80/443 are public and every API route requires the token. The [documented SSM tunnel](https://github.com/rs0125/ramesh-bot/blob/main/docs/ec2-operations.md) on local port **3013** remains available as an alternative. Port 3012 stays available for the fake chat GUI.
 
 ## Structure
 
@@ -75,7 +75,7 @@ On machines with Chrome already installed, `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/usr/
 
 ## Vercel deployment
 
-For a later Vercel rollout, use this repository's root (`.`), the Next.js preset, and Node.js 22. Set the five variables from [.env.example](.env.example) privately in Vercel Production. `WORKER_API_URL` must be a reachable, authenticated HTTPS origin; `ADMIN_ORIGIN` must be the exact stable browser origin. The current private EC2 stack has no inbound rules and does not install Caddy, so deploying this admin alone does not establish connectivity. Do not give preview deployments production worker credentials.
+For Vercel, use this repository's root (`.`), the Next.js preset, and Node.js 22. Set the five variables from [.env.example](.env.example) privately in Vercel Production. Set `WORKER_API_URL=https://wareongo-ramesh.duckdns.org` with the matching production token; `ADMIN_ORIGIN` must be the exact stable browser origin. The worker's authenticated HTTPS endpoint is live. Vercel credentials, environment variables and deployment still need their own setup. Do not give preview deployments production worker credentials.
 
 CI runs type checks, unit tests, the production build, formatting, a dependency audit and browser tests. Successful main CI can trigger the pinned Vercel CLI on that same tested SHA. Configure a GitHub `production` environment restricted to main, repository variable `VERCEL_DEPLOY_ENABLED=true`, variables `VERCEL_ORG_ID` / `VERCEL_PROJECT_ID`, and secret `VERCEL_TOKEN`. CD is disabled until the flag is set. `vercel.json` disables automatic Git deployments so they cannot bypass CI; the workflow uses CLI deployment.
 

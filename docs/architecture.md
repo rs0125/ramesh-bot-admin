@@ -37,7 +37,7 @@ The admin needs only its operator password, cookie secret, origin, worker URL, a
 
 ## Network and test boundaries
 
-The current EC2 security group has no inbound rules and its API binds to `127.0.0.1:3011`. A local admin can reach it through an authorized SSM tunnel, documented on local port **3013**. Vercel needs a separate reachable HTTPS/private gateway arrangement; the worker's Caddy template is a future rollout option, not evidence that the API is publicly reachable.
+The EC2 API binds to `127.0.0.1:3011`. Caddy on that same instance exposes the authenticated API at `https://wareongo-ramesh.duckdns.org`; its security group opens only TCP 80/443. Public TLS, authentication and route restrictions were verified on 3 October 2026. Set the admin's server-side `WORKER_API_URL` to this HTTPS origin and configure the matching production token privately. An authorized SSM tunnel on local port **3013** remains available. The geocoder hostname and instance are independent of this request path.
 
 The worker's fake chat GUI at **3012** is a different application. It uses isolated SQLite, fake chat identities, real model calls, and captured replies; it never opens WhatsApp or Supabase. This admin at **3010** controls whichever worker `WORKER_API_URL` identifies, so a production URL makes pairing and connection controls live operations.
 

@@ -1,19 +1,8 @@
-/** Original WareOnGo artwork shared by public access and the authenticated workspace. */
-import Image from 'next/image';
-
+/** Original WareOnGo artwork, tinted by the shared theme on sign-in and in the workspace. */
 export function Brand() {
   return (
     <span className="brand">
-      <span className="brand-logo">
-        <Image
-          src="/images/wareongo-logo.png"
-          alt="WareOnGo"
-          width={1000}
-          height={1000}
-          sizes="112px"
-          loading="eager"
-        />
-      </span>
+      <span className="brand-logo" role="img" aria-label="WareOnGo" />
       <span className="brand-product">Ramesh</span>
     </span>
   );

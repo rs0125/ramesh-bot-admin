@@ -1,17 +1,17 @@
-/* Editorial spacing from rameshadmindesign.md, with WareOnGo navy and warm paper. */
+/* Wine, lilac, warm paper, and editorial spacing from rameshadmindesign.md. */
 :root {
   color-scheme: light;
   --canvas: #f2f0eb;
   --paper: #ffffff;
   --ink: #292827;
   --muted: #666666;
-  --primary: #23465f;
-  --primary-hover: #19364c;
-  --link: #345f7c;
-  --selected: #d9e5eb;
-  --selected-hover: #e2ebf0;
-  --accent-wash: #edf2f4;
-  --accent-border: #c4d2db;
+  --primary: #421d24;
+  --primary-hover: #592b34;
+  --link: #714cb6;
+  --selected: #d4c7ff;
+  --selected-hover: #dfd5ff;
+  --accent-wash: #eee9fa;
+  --accent-border: #c6b9df;
   --error: #783f3c;
   --error-wash: #f5ebe7;
   --error-border: #d9bfb8;
@@ -255,22 +255,13 @@ textarea {
   flex-shrink: 0;
 }
 .brand-logo {
-  position: relative;
   display: block;
   width: 70px;
   height: 58px;
-  overflow: hidden;
   flex-shrink: 0;
-}
-/* Frame the original artwork's transparent padding without changing its proportions. */
-.brand-logo img {
-  position: absolute;
-  width: 112px;
-  height: 112px;
-  max-width: none;
-  left: -21px;
-  top: -26px;
-  filter: saturate(0.72);
+  background: var(--primary);
+  /* Use the original artwork's alpha channel to tint it without redrawing the logo. */
+  mask: url('/images/wareongo-logo.png') -21px -26px / 112px 112px no-repeat;
 }
 .brand-product {
   padding: 6px 0 6px 12px;

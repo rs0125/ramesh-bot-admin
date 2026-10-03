@@ -3,10 +3,9 @@
 import { useEffect, useState } from 'react';
 
 export const workspaceSections = [
-  ['overview', 'Overview'],
-  ['inbox', 'Inbox'],
-  ['connection', 'Connection'],
-  ['activity', 'Activity'],
+  ['overview', 'Overview', 'overview'],
+  ['inbox', 'Inbox', 'inbox'],
+  ['connection', 'Connection', 'phone'],
 ] as const;
 
 export function useWorkspaceNavigation(onLeaveInbox: () => void) {
@@ -32,24 +31,20 @@ export function useWorkspaceNavigation(onLeaveInbox: () => void) {
         window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 4;
       const candidates = atBottom ? visible : visible.filter(({ top }) => top <= headerHeight + 48);
       const last = candidates.at(-1) ?? visible[0];
-      // Connection and activity share a row on desktop. Respect the chosen anchor within that row.
-      const chosen = candidates.find(
-        ({ id, top }) => `#${id}` === window.location.hash && last && Math.abs(top - last.top) < 2,
-      );
-      setActiveSection(chosen?.id ?? last?.id ?? 'overview');
+      setActiveSection(last?.id ?? 'overview');
     };
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(update);
     };
     const goToSection = (id: string) => {
-      if (!workspaceSections.some(([section]) => section === id)) return;
-      if (id !== 'inbox') onLeaveInbox();
+      // Existing activity bookmarks still open the activity card within Connection.
+      const destination = id === 'activity' ? 'connection' : id;
+      if (!workspaceSections.some(([section]) => section === destination)) return;
+      if (destination !== 'inbox') onLeaveInbox();
       cancelAnimationFrame(anchorFrame);
       // Restore hidden sections before moving to an anchor from the focused inbox.
       anchorFrame = requestAnimationFrame(() => {
-        if (workspaceSections.some(([section]) => section === id)) {
-          document.getElementById(id)?.scrollIntoView({ block: 'start', behavior: 'instant' });
-        }
+        document.getElementById(id)?.scrollIntoView({ block: 'start', behavior: 'instant' });
         schedule();
       });
     };
@@ -78,6 +73,7 @@ export function useWorkspaceNavigation(onLeaveInbox: () => void) {
     window.addEventListener('resize', schedule);
     window.addEventListener('hashchange', onHashChange);
     document.addEventListener('click', onAnchorClick);
+    onHashChange();
     schedule();
     return () => {
       cancelAnimationFrame(frame);

@@ -274,6 +274,7 @@ textarea {
 }
 .brand-link {
   display: inline-flex;
+  justify-self: start;
   border-radius: 8px;
 }
 .workspace-header {
@@ -292,21 +293,31 @@ textarea {
   min-height: 84px;
   width: calc(100% - 64px);
   margin: 0 auto;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
   gap: 24px;
 }
 .workspace-nav {
   display: flex;
   align-items: center;
   gap: 4px;
+  padding: 4px;
+  border: 1px solid #dfd9ce;
+  border-radius: 14px;
+  background: #ebe7df;
 }
 .workspace-nav a {
-  padding: 11px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
   min-height: 44px;
-  border-radius: 8px;
-  font-size: 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 540;
+  white-space: nowrap;
   color: var(--muted);
 }
 .workspace-nav a:hover {
@@ -314,11 +325,16 @@ textarea {
   background: #ffffff80;
 }
 .workspace-nav a[aria-current] {
-  background: var(--selected);
-  color: var(--ink);
+  background: var(--primary);
+  color: var(--paper);
+  box-shadow: 0 1px 3px #421d2420;
+}
+.workspace-nav a:focus-visible {
+  outline-offset: 2px;
 }
 .header-actions {
   display: flex;
+  justify-self: end;
   align-items: center;
   gap: 16px;
 }
@@ -1033,8 +1049,12 @@ textarea {
   margin: 12px auto;
   font-size: 12px;
 }
+.operations-section {
+  margin-top: 64px;
+  min-height: calc(100svh - var(--workspace-header-height, 84px) - 20px);
+}
 .operations-heading {
-  margin: 64px 0 24px;
+  margin-bottom: 24px;
 }
 .operations-heading h2 {
   margin: 8px 0;
@@ -1042,7 +1062,8 @@ textarea {
   letter-spacing: -0.022em;
 }
 .operations-heading > p {
-  font-size: 12px;
+  color: var(--muted);
+  font-size: 14px;
 }
 .content-grid {
   display: grid;
@@ -1409,8 +1430,7 @@ textarea {
   font-size: 12px;
 }
 .is-inbox-focused .overview-section,
-.is-inbox-focused .operations-heading,
-.is-inbox-focused .content-grid,
+.is-inbox-focused .operations-section,
 .is-inbox-focused .page-footer {
   display: none;
 }
@@ -1859,6 +1879,7 @@ body:has(dialog[open]) {
 }
 @media (max-width: 850px) {
   .header-inner {
+    display: flex;
     flex-wrap: wrap;
     gap: 0;
     padding-top: 16px;
@@ -1867,16 +1888,20 @@ body:has(dialog[open]) {
     margin-left: auto;
   }
   .workspace-nav {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.15fr);
     order: 3;
     width: 100%;
-    justify-content: center;
-    padding: 14px 0 12px;
-    gap: 8px;
+    margin: 12px 0;
   }
   .workspace-nav a {
-    flex: 1;
-    text-align: center;
+    padding: 8px;
+    gap: 6px;
     font-size: 12px;
+  }
+  .workspace-nav .icon {
+    width: 16px;
+    height: 16px;
   }
   .page {
     padding-top: 28px;
@@ -2151,7 +2176,7 @@ body:has(dialog[open]) {
     padding: 12px 16px;
     font-size: 12px;
   }
-  .operations-heading {
+  .operations-section {
     margin-top: 40px;
   }
   .operations-heading h2 {
@@ -2244,7 +2269,8 @@ body:has(dialog[open]) {
     gap: 2px;
   }
   .workspace-nav a {
-    padding: 8px;
+    padding: 8px 4px;
+    gap: 4px;
     font-size: 12px;
   }
   .page-heading h1 {

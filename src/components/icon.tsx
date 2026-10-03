@@ -6,6 +6,7 @@ import { ArrowRightIcon } from '@phosphor-icons/react/dist/ssr/ArrowRight';
 import { ArrowLeftIcon } from '@phosphor-icons/react/dist/ssr/ArrowLeft';
 import { ArrowUpRightIcon } from '@phosphor-icons/react/dist/ssr/ArrowUpRight';
 import { TrayIcon } from '@phosphor-icons/react/dist/ssr/Tray';
+import { SquaresFourIcon } from '@phosphor-icons/react/dist/ssr/SquaresFour';
 import { ChatTeardropTextIcon } from '@phosphor-icons/react/dist/ssr/ChatTeardropText';
 import { MagnifyingGlassIcon } from '@phosphor-icons/react/dist/ssr/MagnifyingGlass';
 import { XIcon } from '@phosphor-icons/react/dist/ssr/X';
@@ -34,6 +35,7 @@ const icons = {
   arrow: ArrowRightIcon,
   back: ArrowLeftIcon,
   upRight: ArrowUpRightIcon,
+  overview: SquaresFourIcon,
   inbox: TrayIcon,
   message: ChatTeardropTextIcon,
   search: MagnifyingGlassIcon,

@@ -214,13 +214,14 @@ export function Dashboard() {
             <Brand />
           </a>
           <nav className="workspace-nav" aria-label="Workspace navigation">
-            {workspaceSections.map(([id, title]) => (
+            {workspaceSections.map(([id, title, icon]) => (
               <a
                 key={id}
                 href={`#${id}`}
                 aria-current={activeSection === id ? 'location' : undefined}
               >
-                {title}
+                <Icon name={icon} />
+                <span>{title}</span>
               </a>
             ))}
           </nav>
@@ -369,225 +370,228 @@ export function Dashboard() {
             );
           }}
         />
-        <div className="operations-heading">
-          <h2>Connection & activity</h2>
-        </div>
-        <div className="content-grid">
-          <section
-            className="panel connection-panel"
-            id="connection"
-            aria-labelledby="connection-title"
-          >
-            <div className="panel-heading">
-              <div className="panel-title">
-                <span className="panel-icon">
-                  <Icon name="phone" />
-                </span>
-                <div>
-                  <h2 id="connection-title">WhatsApp connection</h2>
-                </div>
-              </div>
-              <span className={`status-badge ${connected ? 'connected' : ''}`}>
-                <span className={`status-dot ${connected ? 'online' : ''}`} />
-                {label}
-              </span>
-            </div>
-            <div
-              className={`pairing-stage ${connected ? 'is-connected' : ''} ${pairing ? 'is-pairing' : ''}`}
-            >
-              {initialLoading ? (
-                <div className="connection-art" role="status" aria-label="Loading connection">
-                  <Skeleton className="skeleton-connection" />
-                  <span className="sr-only">Loading connection…</span>
-                </div>
-              ) : pairing ? (
-                <div className="qr-frame">
-                  <PairingCode value={status!.qr!} />
-                </div>
-              ) : (
-                <div className="connection-art">
-                  <span className="connection-symbol">
-                    <Icon
-                      name={connected ? 'connected' : transitioning ? 'refresh' : 'phone'}
-                      className={transitioning ? 'spinning' : ''}
-                    />
+        <section className="operations-section" id="connection" aria-labelledby="operations-title">
+          <div className="operations-heading">
+            <h2 id="operations-title">Connection & activity</h2>
+            <p>Manage WhatsApp and review recent updates.</p>
+          </div>
+          <div className="content-grid">
+            <section className="panel connection-panel" aria-labelledby="connection-title">
+              <div className="panel-heading">
+                <div className="panel-title">
+                  <span className="panel-icon">
+                    <Icon name="phone" />
                   </span>
+                  <div>
+                    <h2 id="connection-title">WhatsApp connection</h2>
+                  </div>
                 </div>
-              )}
-              <h3>
-                {connected
-                  ? 'WhatsApp is connected'
-                  : pairing
-                    ? 'Scan to connect WhatsApp'
-                    : !fresh && error
-                      ? 'Connection unavailable'
-                      : transitioning
-                        ? busy === 'disconnect' || status?.state === 'disconnecting'
-                          ? 'Disconnecting WhatsApp…'
-                          : 'Connecting to WhatsApp…'
-                        : !fresh
-                          ? 'Checking connection…'
-                          : 'Connect WhatsApp'}
-              </h3>
-              {!connected && !pairing && (
-                <p>
-                  {!fresh && error
-                    ? 'We’ll keep checking the connection automatically.'
-                    : transitioning
-                      ? 'This may take a moment.'
-                      : !fresh
-                        ? 'Controls will be available once the connection is checked.'
-                        : 'Connect the WhatsApp account Ramesh will use to send and receive messages.'}
-                </p>
-              )}
-              {pairing && (
-                <ol className="pairing-steps">
-                  <li>
-                    <span>1</span>
-                    <div>Open WhatsApp on your phone.</div>
-                  </li>
-                  <li>
-                    <span>2</span>
-                    <div>
-                      Open <strong>Linked devices</strong> from Settings (iPhone) or the three-dot
-                      menu (Android).
-                    </div>
-                  </li>
-                  <li>
-                    <span>3</span>
-                    <div>
-                      Tap <strong>Link a device</strong>, then scan this code.
-                    </div>
-                  </li>
-                </ol>
-              )}
-              {connected && (
-                <a className="text-link" href="#inbox">
-                  Open inbox <Icon name="arrow" />
-                </a>
-              )}
-              {!fresh && error && (
-                <button
-                  className="button secondary"
-                  onClick={() => {
-                    setError('');
-                    setStatusRefresh((value) => value + 1);
-                  }}
-                >
-                  Check again
-                </button>
-              )}
-            </div>
-            <div className="connection-actions">
-              <button
-                className={`button ${pairing ? 'secondary' : 'primary'}`}
-                disabled={!!busy || !fresh || logoutBusy}
-                onClick={() => void control(inactive ? 'connect' : 'reconnect')}
-              >
-                <Icon
-                  name={inactive ? 'phone' : 'refresh'}
-                  className={busy === 'connect' || busy === 'reconnect' ? 'spinning' : ''}
-                />
-                {busy === 'connect' || busy === 'reconnect'
-                  ? busy === 'connect'
-                    ? 'Connecting…'
-                    : status?.state === 'pairing'
-                      ? 'Refreshing QR code…'
-                      : 'Reconnecting…'
-                  : inactive || !status
-                    ? 'Connect WhatsApp'
-                    : pairing
-                      ? 'Refresh QR code'
-                      : 'Reconnect'}
-              </button>
-              <button
-                className="button secondary"
-                disabled={!!busy || !fresh || inactive || logoutBusy}
-                onClick={() => void control('disconnect')}
-              >
-                <Icon name="pause" />
-                {busy === 'disconnect'
-                  ? status?.state === 'pairing'
-                    ? 'Cancelling…'
-                    : 'Disconnecting…'
-                  : pairing
-                    ? 'Cancel setup'
-                    : 'Disconnect'}
-              </button>
-            </div>
-            {!pairing && (
-              <p className="panel-footnote">
-                <Icon name="shield" /> Disconnect pauses incoming messages and replies.
-              </p>
-            )}
-          </section>
-          <section className="panel activity-panel" id="activity" aria-labelledby="activity-title">
-            <div className="panel-heading">
-              <div className="panel-title">
-                <span className="panel-icon">
-                  <Icon name="activity" />
+                <span className={`status-badge ${connected ? 'connected' : ''}`}>
+                  <span className={`status-dot ${connected ? 'online' : ''}`} />
+                  {label}
                 </span>
-                <div>
-                  <h2 id="activity-title">Recent activity</h2>
-                </div>
               </div>
-              <span className={`live-indicator ${fresh ? 'live' : ''}`}>
-                <span className={`status-dot ${fresh ? 'online' : ''}`} />
-                {initialLoading ? 'Loading activity' : fresh ? 'Live updates' : 'Updates paused'}
-              </span>
-            </div>
-            <div className="event-list" aria-busy={initialLoading}>
-              {initialLoading ? (
-                <ContentSkeleton kind="activity" />
-              ) : status?.events.length ? (
-                <ol className="event-timeline">
-                  {status.events.map((event, index) => (
-                    <li className={`event ${event.level}`} key={`${event.at}-${index}`}>
-                      <span className="event-icon">
-                        <Icon name={event.level === 'error' ? 'alert' : 'check'} />
-                      </span>
+              <div
+                className={`pairing-stage ${connected ? 'is-connected' : ''} ${pairing ? 'is-pairing' : ''}`}
+              >
+                {initialLoading ? (
+                  <div className="connection-art" role="status" aria-label="Loading connection">
+                    <Skeleton className="skeleton-connection" />
+                    <span className="sr-only">Loading connection…</span>
+                  </div>
+                ) : pairing ? (
+                  <div className="qr-frame">
+                    <PairingCode value={status!.qr!} />
+                  </div>
+                ) : (
+                  <div className="connection-art">
+                    <span className="connection-symbol">
+                      <Icon
+                        name={connected ? 'connected' : transitioning ? 'refresh' : 'phone'}
+                        className={transitioning ? 'spinning' : ''}
+                      />
+                    </span>
+                  </div>
+                )}
+                <h3>
+                  {connected
+                    ? 'WhatsApp is connected'
+                    : pairing
+                      ? 'Scan to connect WhatsApp'
+                      : !fresh && error
+                        ? 'Connection unavailable'
+                        : transitioning
+                          ? busy === 'disconnect' || status?.state === 'disconnecting'
+                            ? 'Disconnecting WhatsApp…'
+                            : 'Connecting to WhatsApp…'
+                          : !fresh
+                            ? 'Checking connection…'
+                            : 'Connect WhatsApp'}
+                </h3>
+                {!connected && !pairing && (
+                  <p>
+                    {!fresh && error
+                      ? 'We’ll keep checking the connection automatically.'
+                      : transitioning
+                        ? 'This may take a moment.'
+                        : !fresh
+                          ? 'Controls will be available once the connection is checked.'
+                          : 'Connect the WhatsApp account Ramesh will use to send and receive messages.'}
+                  </p>
+                )}
+                {pairing && (
+                  <ol className="pairing-steps">
+                    <li>
+                      <span>1</span>
+                      <div>Open WhatsApp on your phone.</div>
+                    </li>
+                    <li>
+                      <span>2</span>
                       <div>
-                        <p>{event.message}</p>
-                        <time dateTime={event.at}>
-                          {new Date(event.at).toLocaleString([], {
-                            month: 'short',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </time>
+                        Open <strong>Linked devices</strong> from Settings (iPhone) or the three-dot
+                        menu (Android).
                       </div>
                     </li>
-                  ))}
-                </ol>
-              ) : (
-                <div className="empty-state">
-                  <span className="empty-icon">
+                    <li>
+                      <span>3</span>
+                      <div>
+                        Tap <strong>Link a device</strong>, then scan this code.
+                      </div>
+                    </li>
+                  </ol>
+                )}
+                {connected && (
+                  <a className="text-link" href="#inbox">
+                    Open inbox <Icon name="arrow" />
+                  </a>
+                )}
+                {!fresh && error && (
+                  <button
+                    className="button secondary"
+                    onClick={() => {
+                      setError('');
+                      setStatusRefresh((value) => value + 1);
+                    }}
+                  >
+                    Check again
+                  </button>
+                )}
+              </div>
+              <div className="connection-actions">
+                <button
+                  className={`button ${pairing ? 'secondary' : 'primary'}`}
+                  disabled={!!busy || !fresh || logoutBusy}
+                  onClick={() => void control(inactive ? 'connect' : 'reconnect')}
+                >
+                  <Icon
+                    name={inactive ? 'phone' : 'refresh'}
+                    className={busy === 'connect' || busy === 'reconnect' ? 'spinning' : ''}
+                  />
+                  {busy === 'connect' || busy === 'reconnect'
+                    ? busy === 'connect'
+                      ? 'Connecting…'
+                      : status?.state === 'pairing'
+                        ? 'Refreshing QR code…'
+                        : 'Reconnecting…'
+                    : inactive || !status
+                      ? 'Connect WhatsApp'
+                      : pairing
+                        ? 'Refresh QR code'
+                        : 'Reconnect'}
+                </button>
+                <button
+                  className="button secondary"
+                  disabled={!!busy || !fresh || inactive || logoutBusy}
+                  onClick={() => void control('disconnect')}
+                >
+                  <Icon name="pause" />
+                  {busy === 'disconnect'
+                    ? status?.state === 'pairing'
+                      ? 'Cancelling…'
+                      : 'Disconnecting…'
+                    : pairing
+                      ? 'Cancel setup'
+                      : 'Disconnect'}
+                </button>
+              </div>
+              {!pairing && (
+                <p className="panel-footnote">
+                  <Icon name="shield" /> Disconnect pauses incoming messages and replies.
+                </p>
+              )}
+            </section>
+            <section
+              className="panel activity-panel"
+              id="activity"
+              aria-labelledby="activity-title"
+            >
+              <div className="panel-heading">
+                <div className="panel-title">
+                  <span className="panel-icon">
                     <Icon name="activity" />
                   </span>
-                  <h3>{status ? 'No recent activity' : 'Activity unavailable'}</h3>
-                  <p>
-                    {status
-                      ? 'Connection updates and replies will appear here.'
-                      : 'Activity will appear when live updates resume.'}
-                  </p>
+                  <div>
+                    <h2 id="activity-title">Recent activity</h2>
+                  </div>
+                </div>
+                <span className={`live-indicator ${fresh ? 'live' : ''}`}>
+                  <span className={`status-dot ${fresh ? 'online' : ''}`} />
+                  {initialLoading ? 'Loading activity' : fresh ? 'Live updates' : 'Updates paused'}
+                </span>
+              </div>
+              <div className="event-list" aria-busy={initialLoading}>
+                {initialLoading ? (
+                  <ContentSkeleton kind="activity" />
+                ) : status?.events.length ? (
+                  <ol className="event-timeline">
+                    {status.events.map((event, index) => (
+                      <li className={`event ${event.level}`} key={`${event.at}-${index}`}>
+                        <span className="event-icon">
+                          <Icon name={event.level === 'error' ? 'alert' : 'check'} />
+                        </span>
+                        <div>
+                          <p>{event.message}</p>
+                          <time dateTime={event.at}>
+                            {new Date(event.at).toLocaleString([], {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </time>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <div className="empty-state">
+                    <span className="empty-icon">
+                      <Icon name="activity" />
+                    </span>
+                    <h3>{status ? 'No recent activity' : 'Activity unavailable'}</h3>
+                    <p>
+                      {status
+                        ? 'Connection updates and replies will appear here.'
+                        : 'Activity will appear when live updates resume.'}
+                    </p>
+                  </div>
+                )}
+              </div>
+              <div className="activity-footer">
+                <span>
+                  <Icon name="alert" /> Errors
+                </span>
+                <strong>{metrics?.errors?.toLocaleString() ?? '—'}</strong>
+              </div>
+              {!!metrics?.dropped && (
+                <div className="activity-footer">
+                  <span>Messages skipped while busy</span>
+                  <strong>{metrics.dropped.toLocaleString()}</strong>
                 </div>
               )}
-            </div>
-            <div className="activity-footer">
-              <span>
-                <Icon name="alert" /> Errors
-              </span>
-              <strong>{metrics?.errors?.toLocaleString() ?? '—'}</strong>
-            </div>
-            {!!metrics?.dropped && (
-              <div className="activity-footer">
-                <span>Messages skipped while busy</span>
-                <strong>{metrics.dropped.toLocaleString()}</strong>
-              </div>
-            )}
-          </section>
-        </div>
+            </section>
+          </div>
+        </section>
         <footer className="page-footer">
           <a className="text-link" href="#overview">
             Back to top <Icon name="upRight" />
